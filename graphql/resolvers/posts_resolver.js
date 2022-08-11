@@ -1,4 +1,4 @@
-const { AuthenticationError } = require('apollo-server');
+const { AuthenticationError, UserInputError } = require('apollo-server');
 
 const Post = require('../../models/Post');
 const checkAuth = require('../../util/check-auth');
@@ -30,7 +30,15 @@ module.exports = {
         async createPost(_, { tags, body, rating }, context) {
 
             const user = checkAuth(context);
-            console.log(user);
+            if (tags === '') {
+                throw new Error('Post Tags must not be empty');
+            }
+            if (body === '') {
+                throw new Error('Post Body must not be empty');
+            }
+            if (rating === '') {
+                throw new Error('Post Rating must not be empty');
+            }
 
             const newPost = new Post({
                 tags,
@@ -42,6 +50,10 @@ module.exports = {
             });
 
             const post = await newPost.save();
+
+            context.pubsub.publish('NEW_POST', {
+                newPost: post
+            });
 
             return post;
         },
@@ -59,6 +71,31 @@ module.exports = {
             } catch (err) {
                 throw new Error(err);
             }
+        },
+        async likePost(_, { postId }, context) {
+            const { username } = checkAuth(context);
+
+            const post = await Post.findById(postId);
+            if (post) {
+                if (post.likes.find((like) => like.username === username)) {
+                    // Post already likes, unlike it
+                    post.likes = post.likes.filter((like) => like.username !== username);
+                } else {
+                    // Not liked, like post
+                    post.likes.push({
+                        username,
+                        createdAt: new Date().toISOString()
+                    });
+                }
+
+                await post.save();
+                return post;
+            } else throw new UserInputError('Post not found');
+        }
+    },
+    Subscription: {
+        newPost: {
+            subscribe: (_, __, { pubsub }) => pubsub.asyncIterator('NEW_POST')
         }
     }
 };

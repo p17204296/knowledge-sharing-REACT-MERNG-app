@@ -8,7 +8,7 @@ module.exports = gql`
         confirmPassword: String!
     }
     type User{
-        id: ID
+        id: ID!
         email: String!
         token: String!
         username: String!
@@ -21,6 +21,21 @@ module.exports = gql`
         username: String!
         tags: String!
         rating: Float!
+        comments: [Comment]!
+        likes: [Like]!
+        likeCount: Int!
+        commentCount: Int!  
+    }
+        type Comment {
+        id: ID!
+        createdAt: String!
+        username: String!
+        body: String!
+    }
+    type Like {
+        id: ID!
+        createdAt: String!
+        username: String!
     }
     type Query {
         getPosts: [Post]
@@ -31,5 +46,11 @@ module.exports = gql`
         login(username: String!, password: String!): User!
         createPost(tags: String!, body: String!, rating: Float!): Post!
         deletePost(postId: ID!): String!
+        createComment(postId: String!, body: String!): Post!
+        deleteComment(postId: ID!, commentId: ID!): Post!
+        likePost(postId: ID!): Post!
+    }
+    type Subscription {
+        newPost: Post!        
     }
 `;
